@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/provider-utils/apiutils/api"
 	"github.com/ironcore-dev/provider-utils/storeutils/host"
 	"github.com/ironcore-dev/provider-utils/storeutils/store"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 type Dummy struct {

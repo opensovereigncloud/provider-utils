@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/provider-utils/apiutils/api"
 	"github.com/ironcore-dev/provider-utils/storeutils/store"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

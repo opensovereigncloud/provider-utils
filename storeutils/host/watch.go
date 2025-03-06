@@ -4,7 +4,7 @@
 package host
 
 import (
-	"github.com/ironcore-dev/libvirt-provider/api"
+	"github.com/ironcore-dev/provider-utils/apiutils/api"
 	"github.com/ironcore-dev/provider-utils/storeutils/store"
 )
 
