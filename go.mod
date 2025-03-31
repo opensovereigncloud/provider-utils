@@ -1,15 +1,16 @@
 module github.com/ironcore-dev/provider-utils
 
 go 1.23.0
+toolchain go1.24.1
 
 require (
 	github.com/go-logr/logr v1.4.2
-	github.com/ironcore-dev/controller-utils v0.9.8
+	github.com/ironcore-dev/controller-utils v0.9.9
 	github.com/ironcore-dev/ironcore v0.2.2
-	github.com/onsi/ginkgo/v2 v2.23.0
-	github.com/onsi/gomega v1.36.2
-	k8s.io/apimachinery v0.32.2
-	sigs.k8s.io/controller-runtime v0.20.2
+	github.com/onsi/ginkgo/v2 v2.23.3
+	github.com/onsi/gomega v1.36.3
+	k8s.io/apimachinery v0.32.3
+	sigs.k8s.io/controller-runtime v0.20.4
 )
 
 require (
@@ -48,8 +49,8 @@ require (
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.32.2 // indirect
-	k8s.io/client-go v0.32.2 // indirect
+	k8s.io/api v0.32.3 // indirect
+	k8s.io/client-go v0.32.3 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250304201544-e5f78fe3ede9 // indirect
 	k8s.io/utils v0.0.0-20241210054802-24370beab758 // indirect
