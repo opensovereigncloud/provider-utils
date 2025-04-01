@@ -68,6 +68,8 @@ type Store struct {
 
 // NewEventStore creates a new EventStore with a fixed number of events and set TTL for events.
 func NewEventStore(log logr.Logger, opts EventStoreOptions) *Store {
+	opts.Defaults()
+
 	return &Store{
 		maxEvents:           opts.MachineEventMaxEvents,
 		events:              make([]*Event, opts.MachineEventMaxEvents),
