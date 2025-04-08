@@ -34,22 +34,22 @@ type Event struct {
 
 // EventStoreOptions defines options to initialize the machine event store
 type EventStoreOptions struct {
-	MachineEventMaxEvents      int
-	MachineEventTTL            time.Duration
-	MachineEventResyncInterval time.Duration
+	MaxEvents      int
+	TTL            time.Duration
+	ResyncInterval time.Duration
 }
 
 func (o *EventStoreOptions) Defaults() {
-	if o.MachineEventMaxEvents <= 0 {
-		o.MachineEventMaxEvents = 1000
+	if o.MaxEvents <= 0 {
+		o.MaxEvents = 1000
 	}
 
-	if o.MachineEventResyncInterval <= 0 {
-		o.MachineEventResyncInterval = time.Minute
+	if o.ResyncInterval <= 0 {
+		o.ResyncInterval = time.Minute
 	}
 
-	if o.MachineEventResyncInterval <= 0 {
-		o.MachineEventResyncInterval = time.Minute
+	if o.ResyncInterval <= 0 {
+		o.ResyncInterval = time.Minute
 	}
 }
 
@@ -71,10 +71,10 @@ func NewEventStore(log logr.Logger, opts EventStoreOptions) *Store {
 	opts.Defaults()
 
 	return &Store{
-		maxEvents:           opts.MachineEventMaxEvents,
-		events:              make([]*Event, opts.MachineEventMaxEvents),
-		eventTTL:            opts.MachineEventTTL,
-		eventResyncInterval: opts.MachineEventResyncInterval,
+		maxEvents:           opts.MaxEvents,
+		events:              make([]*Event, opts.MaxEvents),
+		eventTTL:            opts.TTL,
+		eventResyncInterval: opts.ResyncInterval,
 		head:                0,
 		count:               0,
 		log:                 log,

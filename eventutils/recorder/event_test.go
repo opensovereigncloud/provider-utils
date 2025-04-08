@@ -45,9 +45,9 @@ var (
 				" \"downward-api.machinepoollet.ironcore.dev/root-machine-name\":\"machine1\"}",
 		}}
 	opts = recorder.EventStoreOptions{
-		MachineEventMaxEvents:      maxEvents,
-		MachineEventTTL:            eventTTL,
-		MachineEventResyncInterval: resyncInterval,
+		MaxEvents:      maxEvents,
+		TTL:            eventTTL,
+		ResyncInterval: resyncInterval,
 	}
 )
 
