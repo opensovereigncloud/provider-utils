@@ -135,6 +135,8 @@ func (s *ListWatchSource[E]) Start(ctx context.Context) error {
 		}, s.resyncDuration)
 	}()
 
+	wg.Wait()
+
 	return nil
 }
 
