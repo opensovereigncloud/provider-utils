@@ -3,7 +3,7 @@ module github.com/ironcore-dev/provider-utils
 go 1.24.0
 
 require (
-	github.com/go-logr/logr v1.4.2
+	github.com/go-logr/logr v1.4.3
 	github.com/ironcore-dev/controller-utils v0.9.9
 	github.com/ironcore-dev/ironcore v0.2.3
 	github.com/onsi/ginkgo/v2 v2.23.4
