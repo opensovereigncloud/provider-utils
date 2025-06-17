@@ -130,7 +130,7 @@ func (s *Store[E]) Update(_ context.Context, obj E) (E, error) {
 	}
 
 	if obj.GetDeletedAt() != nil && len(obj.GetFinalizers()) == 0 {
-		if err := s.delete(obj.GetID()); err != nil {
+		if err := s.delete(obj); err != nil {
 			return utils.Zero[E](), fmt.Errorf("failed to delete object metadata: %w", err)
 		}
 		return obj, nil
@@ -169,7 +169,7 @@ func (s *Store[E]) Delete(_ context.Context, id string) error {
 	}
 
 	if len(obj.GetFinalizers()) == 0 {
-		return s.delete(id)
+		return s.delete(obj)
 	}
 
 	if obj.GetDeletedAt() != nil {
@@ -261,10 +261,15 @@ func (s *Store[E]) set(obj E) (E, error) {
 	return obj, nil
 }
 
-func (s *Store[E]) delete(id string) error {
-	if err := os.Remove(filepath.Join(s.dir, id)); err != nil {
+func (s *Store[E]) delete(obj E) error {
+	if err := os.Remove(filepath.Join(s.dir, obj.GetID())); err != nil {
 		return fmt.Errorf("failed to delete object from store: %w", err)
 	}
+
+	s.enqueue(store.WatchEvent[E]{
+		Type:   store.WatchEventTypeDeleted,
+		Object: obj,
+	})
 
 	return nil
 }
