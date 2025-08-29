@@ -6,8 +6,8 @@ require (
 	github.com/go-logr/logr v1.4.3
 	github.com/ironcore-dev/controller-utils v0.10.0
 	github.com/ironcore-dev/ironcore v0.2.3
-	github.com/onsi/ginkgo/v2 v2.25.1
-	github.com/onsi/gomega v1.38.1
+	github.com/onsi/ginkgo/v2 v2.25.2
+	github.com/onsi/gomega v1.38.2
 	k8s.io/apimachinery v0.33.3
 	sigs.k8s.io/controller-runtime v0.21.0
 )
