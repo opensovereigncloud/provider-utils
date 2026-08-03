@@ -42,12 +42,14 @@ const (
 	WatchEventTypeDeleted WatchEventType = "Deleted"
 )
 
+type IndexerFunc[E api.Object] func(E) string
+
 type Store[E api.Object] interface {
 	Create(ctx context.Context, obj E) (E, error)
 	Get(ctx context.Context, id string) (E, error)
 	Update(ctx context.Context, obj E) (E, error)
 	Delete(ctx context.Context, id string) error
-	List(ctx context.Context) ([]E, error)
+	List(ctx context.Context, opts ...ListOption) ([]E, error)
 
-	Watch(ctx context.Context) (Watch[E], error)
+	Watch(ctx context.Context, opts ...ListOption) (Watch[E], error)
 }

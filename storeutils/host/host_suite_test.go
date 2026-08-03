@@ -19,11 +19,13 @@ import (
 
 type Dummy struct {
 	api.Metadata `json:"metadata,omitempty"`
+	Spec         string `json:"spec,omitempty"`
 }
 
 var (
-	tmpDir     string
-	dummyStore store.Store[*Dummy]
+	tmpDir          string
+	dummyStore      store.Store[*Dummy]
+	dummyStoreField *host.Store[*Dummy]
 )
 
 const (
@@ -53,6 +55,18 @@ var _ = BeforeSuite(func() {
 		Dir: tmpDir,
 		NewFunc: func() *Dummy {
 			return &Dummy{}
+		},
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	fieldTmpDir := GinkgoT().TempDir()
+	dummyStoreField, err = host.NewStore[*Dummy](host.Options[*Dummy]{
+		Dir: fieldTmpDir,
+		NewFunc: func() *Dummy {
+			return &Dummy{}
+		},
+		FieldIndexers: map[string]store.IndexerFunc[*Dummy]{
+			"spec": func(d *Dummy) string { return d.Spec },
 		},
 	})
 	Expect(err).NotTo(HaveOccurred())

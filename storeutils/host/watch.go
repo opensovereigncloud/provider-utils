@@ -6,11 +6,18 @@ package host
 import (
 	"github.com/ironcore-dev/provider-utils/apiutils/api"
 	"github.com/ironcore-dev/provider-utils/storeutils/store"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type watch[E api.Object] struct {
-	store  *Store[E]
-	events chan store.WatchEvent[E]
+	store   *Store[E]
+	events  chan store.WatchEvent[E]
+	opts    store.ListOptions
+	members sets.Set[string]
+}
+
+func (w *watch[E]) matches(obj E) bool {
+	return w.store.matchesOptions(obj, w.opts)
 }
 
 func (w *watch[E]) Stop() {

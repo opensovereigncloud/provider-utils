@@ -49,6 +49,7 @@ type Event[E api.Object] struct {
 
 type ListWatchSourceOptions struct {
 	ResyncDuration time.Duration
+	ListOptions    []store.ListOption
 }
 
 func setListWatchSourceOptionsDefaults(o *ListWatchSourceOptions) {
@@ -57,9 +58,11 @@ func setListWatchSourceOptionsDefaults(o *ListWatchSourceOptions) {
 	}
 }
 
-func NewListWatchSource[E api.Object](listFunc func(ctx context.Context) (
-	[]E, error),
-	watchFunc func(ctx context.Context) (store.Watch[E], error),
+type ListFunc[E api.Object] func(context.Context, ...store.ListOption) ([]E, error)
+type WatchFunc[E api.Object] func(context.Context, ...store.ListOption) (store.Watch[E], error)
+
+func NewListWatchSource[E api.Object](listFunc ListFunc[E],
+	watchFunc WatchFunc[E],
 	opts ListWatchSourceOptions,
 ) (*ListWatchSource[E], error) {
 	setListWatchSourceOptionsDefaults(&opts)
@@ -67,14 +70,16 @@ func NewListWatchSource[E api.Object](listFunc func(ctx context.Context) (
 	return &ListWatchSource[E]{
 		listFunc:       listFunc,
 		watchFunc:      watchFunc,
+		listOptions:    opts.ListOptions,
 		handles:        sets.New[*handle[E]](),
 		resyncDuration: opts.ResyncDuration,
 	}, nil
 }
 
 type ListWatchSource[E api.Object] struct {
-	listFunc  func(ctx context.Context) ([]E, error)
-	watchFunc func(ctx context.Context) (store.Watch[E], error)
+	listFunc    ListFunc[E]
+	watchFunc   WatchFunc[E]
+	listOptions []store.ListOption
 
 	handlesMu sync.RWMutex
 	handles   sets.Set[*handle[E]]
@@ -86,7 +91,7 @@ func (s *ListWatchSource[E]) Start(ctx context.Context) error {
 	log := logr.FromContextOrDiscard(ctx)
 	var wg sync.WaitGroup
 
-	watch, err := s.watchFunc(ctx)
+	watch, err := s.watchFunc(ctx, s.listOptions...)
 	if err != nil {
 		return fmt.Errorf("failed to start watch: %w", err)
 	}
@@ -120,7 +125,7 @@ func (s *ListWatchSource[E]) Start(ctx context.Context) error {
 		defer wg.Done()
 
 		wait.UntilWithContext(ctx, func(ctx context.Context) {
-			objs, err := s.listFunc(ctx)
+			objs, err := s.listFunc(ctx, s.listOptions...)
 			if err != nil {
 				log.Error(err, "failed to list objects")
 				return
