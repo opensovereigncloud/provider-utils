@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/ironcore-dev/provider-utils/apiutils/api"
 	"github.com/ironcore-dev/provider-utils/storeutils/store"
 	utilssync "github.com/ironcore-dev/provider-utils/storeutils/sync"
@@ -29,6 +30,7 @@ type Options[E api.Object] struct {
 	CreateStrategy  CreateStrategy[E]
 	WatchBufferSize int
 	FieldIndexers   map[string]store.IndexerFunc[E]
+	Log             logr.Logger
 }
 
 func (o *Options[E]) Defaults() {
@@ -54,6 +56,7 @@ func NewStore[E api.Object](opts Options[E]) (*Store[E], error) {
 	}
 	return &Store[E]{
 		dir: opts.Dir,
+		log: opts.Log,
 
 		idMu: utilssync.NewMutexMap[string](),
 
@@ -69,6 +72,7 @@ func NewStore[E api.Object](opts Options[E]) (*Store[E], error) {
 
 type Store[E api.Object] struct {
 	dir string
+	log logr.Logger
 
 	idMu *utilssync.MutexMap[string]
 
@@ -270,7 +274,7 @@ func (s *Store[E]) List(ctx context.Context, opts ...store.ListOption) ([]E, err
 	return objs, nil
 }
 
-func (s *Store[E]) Watch(_ context.Context, opts ...store.ListOption) (store.Watch[E], error) {
+func (s *Store[E]) Watch(ctx context.Context, opts ...store.ListOption) (store.Watch[E], error) {
 	listOpts := &store.ListOptions{}
 	for _, opt := range opts {
 		opt.ApplyToList(listOpts)
@@ -280,6 +284,20 @@ func (s *Store[E]) Watch(_ context.Context, opts ...store.ListOption) (store.Wat
 		return nil, err
 	}
 
+	// List runs before acquiring watchesMu to avoid a deadlock: List→Get acquires
+	// idMu, while mutations hold idMu before calling enqueue→watchesMu.RLock.
+	// This means a mutation between List and watches.Insert may be missed in
+	// members, but we accept that narrow gap.
+	existing, err := s.List(ctx, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list existing objects for watch: %w", err)
+	}
+
+	members := sets.New[string]()
+	for _, obj := range existing {
+		members.Insert(obj.GetID())
+	}
+
 	s.watchesMu.Lock()
 	defer s.watchesMu.Unlock()
 
@@ -287,7 +305,7 @@ func (s *Store[E]) Watch(_ context.Context, opts ...store.ListOption) (store.Wat
 		store:   s,
 		events:  make(chan store.WatchEvent[E], s.watchBufferSize),
 		opts:    *listOpts,
-		members: sets.New[string](),
+		members: members,
 	}
 
 	s.watches.Insert(w)
@@ -346,23 +364,37 @@ func (s *Store[E]) watchHandlers() []*watch[E] {
 	return s.watches.UnsortedList()
 }
 
-func (s *Store[E]) send(w *watch[E], evt store.WatchEvent[E]) {
-	select {
-	case w.events <- evt:
-	default:
-	}
-}
-
 func (s *Store[E]) enqueue(evt store.WatchEvent[E]) {
 	id := evt.Object.GetID()
 	for _, handler := range s.watchHandlers() {
-		if handler.matches(evt.Object) {
+		var toSend store.WatchEvent[E]
+
+		handler.membersMu.Lock()
+		switch {
+		case evt.Type == store.WatchEventTypeDeleted:
+			// Object was deleted; forward only if we were tracking it.
+			if handler.members.Has(id) {
+				handler.members.Delete(id)
+				toSend = evt
+			}
+		case handler.matches(evt.Object):
+			// Object matches the filter; track it and forward the event.
 			handler.members.Insert(id)
-			s.send(handler, evt)
-		} else if handler.members.Has(id) {
-			// Object transitioned out of this watch's scope. Send deleted event.
+			toSend = evt
+		case handler.members.Has(id):
+			// Object no longer matches the filter. Send deleted event.
 			handler.members.Delete(id)
-			s.send(handler, store.WatchEvent[E]{Type: store.WatchEventTypeDeleted, Object: evt.Object})
+			toSend = store.WatchEvent[E]{Type: store.WatchEventTypeDeleted, Object: evt.Object}
+		}
+		handler.membersMu.Unlock()
+
+		if toSend.Type != "" {
+			select {
+			case handler.events <- toSend:
+			default:
+				// TODO: switch to `ctx` to backpressure, if channel size is not enough
+				s.log.Info("Dropping watch event, due to full channel", "event", evt)
+			}
 		}
 	}
 }

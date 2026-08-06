@@ -210,5 +210,95 @@ var _ = Describe("Store", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unindexed field"))
 		})
+
+		It("should receive a deleted event for an object that existed before the watch was created", func(ctx SpecContext) {
+			obj, err := dummyStore.Create(ctx, &Dummy{Metadata: api.Metadata{ID: "preexisting-deleted"}})
+			Expect(err).NotTo(HaveOccurred())
+
+			watch, err := dummyStore.Watch(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(watch.Stop)
+
+			Expect(dummyStore.Delete(ctx, obj.GetID())).To(Succeed())
+
+			Eventually(watch.Events()).Should(Receive(HaveField("Type", store.WatchEventTypeDeleted)))
+		})
+
+		It("should emit a deleted event when a tracked object transitions out of scope", func(ctx SpecContext) {
+			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{"app": "watched"})
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(watch.Stop)
+
+			obj := createDummy(ctx, dummyStore, "transitions-out", map[string]string{"app": "watched"}, "")
+			Eventually(watch.Events()).Should(Receive(HaveField("Type", store.WatchEventTypeCreated)))
+
+			obj.Labels["app"] = "other"
+			_, err = dummyStore.Update(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(watch.Events()).Should(Receive(HaveField("Type", store.WatchEventTypeDeleted)))
+		})
+
+		It("should not forward a delete event for an object that was never tracked", func(ctx SpecContext) {
+			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{"app": "watched"})
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(watch.Stop)
+
+			obj, err := dummyStore.Create(ctx, &Dummy{
+				Metadata: api.Metadata{ID: "delete-untracked", Labels: map[string]string{"app": "other"}},
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Consistently(watch.Events()).ShouldNot(Receive())
+
+			Expect(dummyStore.Delete(ctx, obj.GetID())).To(Succeed())
+			Consistently(watch.Events()).ShouldNot(Receive())
+		})
+
+		It("should forward a delete event for a tracked object", func(ctx SpecContext) {
+			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{"app": "watched"})
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(watch.Stop)
+
+			obj, err := dummyStore.Create(ctx, &Dummy{
+				Metadata: api.Metadata{ID: "delete-tracked", Labels: map[string]string{"app": "watched"}},
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(watch.Events()).Should(Receive(HaveField("Type", store.WatchEventTypeCreated)))
+
+			Expect(dummyStore.Delete(ctx, obj.GetID())).To(Succeed())
+			Eventually(watch.Events()).Should(Receive(HaveField("Type", store.WatchEventTypeDeleted)))
+		})
+
+		It("should receive events when an object transitions into scope", func(ctx SpecContext) {
+			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{"app": "watched"})
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(watch.Stop)
+
+			obj := createDummy(ctx, dummyStore, "transitions-in", map[string]string{"app": "other"}, "")
+			Consistently(watch.Events()).ShouldNot(Receive())
+
+			obj.Labels["app"] = "watched"
+			updated, err := dummyStore.Update(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(watch.Events()).Should(Receive(Equal(
+				store.WatchEvent[*Dummy]{Type: store.WatchEventTypeUpdated, Object: updated},
+			)))
+		})
+
+		It("should emit a deleted event when a pre-existing object transitions out of scope", func(ctx SpecContext) {
+			obj := createDummy(ctx, dummyStore, "preexisting-transitions-out", map[string]string{"app": "watched"}, "")
+
+			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{"app": "watched"})
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(watch.Stop)
+
+			obj.Labels["app"] = "other"
+			_, err = dummyStore.Update(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(watch.Events()).Should(Receive(HaveField("Type", store.WatchEventTypeDeleted)))
+			Consistently(watch.Events()).ShouldNot(Receive())
+		})
 	})
 })

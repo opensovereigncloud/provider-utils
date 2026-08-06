@@ -4,16 +4,19 @@
 package host
 
 import (
+	"sync"
+
 	"github.com/ironcore-dev/provider-utils/apiutils/api"
 	"github.com/ironcore-dev/provider-utils/storeutils/store"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type watch[E api.Object] struct {
-	store   *Store[E]
-	events  chan store.WatchEvent[E]
-	opts    store.ListOptions
-	members sets.Set[string]
+	store     *Store[E]
+	events    chan store.WatchEvent[E]
+	opts      store.ListOptions
+	membersMu sync.Mutex
+	members   sets.Set[string]
 }
 
 func (w *watch[E]) matches(obj E) bool {
