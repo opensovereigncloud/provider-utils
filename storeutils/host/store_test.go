@@ -14,6 +14,17 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const (
+	appLabel   = "app"
+	appFoo     = "foo"
+	appWatched = "watched"
+	appOther   = "other"
+	envLabel   = "env"
+	envProd    = "prod"
+	envDev     = "dev"
+	specSSD    = "ssd"
+)
+
 func createDummy(ctx context.Context, s store.Store[*Dummy], id string, labels map[string]string, spec string) *Dummy {
 	obj, err := s.Create(ctx, &Dummy{
 		Metadata: api.Metadata{ID: id, Labels: labels},
@@ -57,9 +68,9 @@ var _ = Describe("Store", func() {
 
 	It("should filter objects by labels using MatchingLabels", func(ctx SpecContext) {
 		By("creating objects with different labels")
-		createDummy(ctx, dummyStore, "labeled-a", map[string]string{"app": "foo", "env": "prod"}, "")
-		createDummy(ctx, dummyStore, "labeled-b", map[string]string{"app": "bar", "env": "prod"}, "")
-		createDummy(ctx, dummyStore, "labeled-c", map[string]string{"app": "foo", "env": "dev"}, "")
+		createDummy(ctx, dummyStore, "labeled-a", map[string]string{appLabel: appFoo, envLabel: envProd}, "")
+		createDummy(ctx, dummyStore, "labeled-b", map[string]string{appLabel: "bar", envLabel: envProd}, "")
+		createDummy(ctx, dummyStore, "labeled-c", map[string]string{appLabel: appFoo, envLabel: envDev}, "")
 
 		By("listing without filter returns all objects")
 		all, err := dummyStore.List(ctx)
@@ -67,21 +78,21 @@ var _ = Describe("Store", func() {
 		Expect(all).To(HaveLen(3))
 
 		By("listing with MatchingLabels filters correctly")
-		filtered, err := dummyStore.List(ctx, store.MatchingLabels{"app": "foo"})
+		filtered, err := dummyStore.List(ctx, store.MatchingLabels{appLabel: appFoo})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(filtered).To(HaveLen(2))
 		for _, obj := range filtered {
-			Expect(obj.GetLabels()["app"]).To(Equal("foo"))
+			Expect(obj.GetLabels()[appLabel]).To(Equal(appFoo))
 		}
 
 		By("listing with multiple label selectors")
-		filtered, err = dummyStore.List(ctx, store.MatchingLabels{"app": "foo", "env": "prod"})
+		filtered, err = dummyStore.List(ctx, store.MatchingLabels{appLabel: appFoo, envLabel: envProd})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(filtered).To(HaveLen(1))
 		Expect(filtered[0].GetID()).To(Equal("labeled-a"))
 
 		By("listing with HasLabels filters by key existence")
-		filtered, err = dummyStore.List(ctx, store.HasLabels{"env"})
+		filtered, err = dummyStore.List(ctx, store.HasLabels{envLabel})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(filtered).To(HaveLen(3))
 
@@ -91,27 +102,27 @@ var _ = Describe("Store", func() {
 		Expect(filtered).To(BeEmpty())
 
 		By("combining MatchingLabels and HasLabels")
-		filtered, err = dummyStore.List(ctx, store.MatchingLabels{"env": "prod"}, store.HasLabels{"app"})
+		filtered, err = dummyStore.List(ctx, store.MatchingLabels{envLabel: envProd}, store.HasLabels{appLabel})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(filtered).To(HaveLen(2))
 	})
 
 	It("should filter objects by fields using MatchingFields", func(ctx SpecContext) {
 		By("creating objects with different spec values")
-		createDummy(ctx, dummyStoreField, "field-ssd-a", nil, "ssd")
-		createDummy(ctx, dummyStoreField, "field-ssd-b", nil, "ssd")
+		createDummy(ctx, dummyStoreField, "field-ssd-a", nil, specSSD)
+		createDummy(ctx, dummyStoreField, "field-ssd-b", nil, specSSD)
 		createDummy(ctx, dummyStoreField, "field-hdd", nil, "hdd")
 
 		By("listing with MatchingFields filters by field value")
-		filtered, err := dummyStoreField.List(ctx, store.MatchingFields{"spec": "ssd"})
+		filtered, err := dummyStoreField.List(ctx, store.MatchingFields{specField: specSSD})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(filtered).To(HaveLen(2))
 		for _, obj := range filtered {
-			Expect(obj.Spec).To(Equal("ssd"))
+			Expect(obj.Spec).To(Equal(specSSD))
 		}
 
 		By("listing with MatchingFields returns nothing for unmatched value")
-		filtered, err = dummyStoreField.List(ctx, store.MatchingFields{"spec": "nvme"})
+		filtered, err = dummyStoreField.List(ctx, store.MatchingFields{specField: "nvme"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(filtered).To(BeEmpty())
 	})
@@ -123,14 +134,14 @@ var _ = Describe("Store", func() {
 	})
 
 	It("should apply label and field selectors as AND when both are set", func(ctx SpecContext) {
-		createDummy(ctx, dummyStoreField, "combined-a", map[string]string{"env": "prod"}, "ssd")
-		createDummy(ctx, dummyStoreField, "combined-b", map[string]string{"env": "prod"}, "hdd")
-		createDummy(ctx, dummyStoreField, "combined-c", map[string]string{"env": "dev"}, "ssd")
+		createDummy(ctx, dummyStoreField, "combined-a", map[string]string{envLabel: envProd}, specSSD)
+		createDummy(ctx, dummyStoreField, "combined-b", map[string]string{envLabel: envProd}, "hdd")
+		createDummy(ctx, dummyStoreField, "combined-c", map[string]string{envLabel: envDev}, specSSD)
 
 		By("only the object matching both selectors is returned")
 		filtered, err := dummyStoreField.List(ctx,
-			store.MatchingLabels{"env": "prod"},
-			store.MatchingFields{"spec": "ssd"},
+			store.MatchingLabels{envLabel: envProd},
+			store.MatchingFields{specField: specSSD},
 		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(filtered).To(HaveLen(1))
@@ -149,25 +160,25 @@ var _ = Describe("Store", func() {
 		})
 
 		It("should only receive events for objects matching a label selector", func(ctx SpecContext) {
-			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{"app": "watched"})
+			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{appLabel: appWatched})
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(watch.Stop)
 
 			By("creating a non-matching object")
-			createDummy(ctx, dummyStore, "watch-label-ignored", map[string]string{"app": "other"}, "")
+			createDummy(ctx, dummyStore, "watch-label-ignored", map[string]string{appLabel: appOther}, "")
 
 			By("checking that the non-matching event is not received")
 			Consistently(watch.Events()).ShouldNot(Receive())
 
 			By("creating a matching object")
-			obj := createDummy(ctx, dummyStore, "watch-label-matched", map[string]string{"app": "watched"}, "")
+			obj := createDummy(ctx, dummyStore, "watch-label-matched", map[string]string{appLabel: appWatched}, "")
 
 			event := store.WatchEvent[*Dummy]{Type: store.WatchEventTypeCreated, Object: obj}
 			Eventually(watch.Events()).Should(Receive(Equal(event)))
 		})
 
 		It("should only receive events for objects matching a field selector", func(ctx SpecContext) {
-			watch, err := dummyStoreField.Watch(ctx, store.MatchingFields{"spec": "ssd"})
+			watch, err := dummyStoreField.Watch(ctx, store.MatchingFields{specField: specSSD})
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(watch.Stop)
 
@@ -178,7 +189,7 @@ var _ = Describe("Store", func() {
 			Consistently(watch.Events()).ShouldNot(Receive())
 
 			By("creating a matching object")
-			obj := createDummy(ctx, dummyStoreField, "watch-field-matched", nil, "ssd")
+			obj := createDummy(ctx, dummyStoreField, "watch-field-matched", nil, specSSD)
 
 			event := store.WatchEvent[*Dummy]{Type: store.WatchEventTypeCreated, Object: obj}
 			Eventually(watch.Events()).Should(Receive(Equal(event)))
@@ -186,20 +197,20 @@ var _ = Describe("Store", func() {
 
 		It("should only receive events matching combined label and field selectors", func(ctx SpecContext) {
 			watch, err := dummyStoreField.Watch(ctx,
-				store.MatchingLabels{"env": "prod"},
-				store.MatchingFields{"spec": "ssd"},
+				store.MatchingLabels{envLabel: envProd},
+				store.MatchingFields{specField: specSSD},
 			)
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(watch.Stop)
 
 			By("creating objects that only partially match")
-			createDummy(ctx, dummyStoreField, "watch-combined-label-only", map[string]string{"env": "prod"}, "hdd")
-			createDummy(ctx, dummyStoreField, "watch-combined-field-only", map[string]string{"env": "dev"}, "ssd")
+			createDummy(ctx, dummyStoreField, "watch-combined-label-only", map[string]string{envLabel: envProd}, "hdd")
+			createDummy(ctx, dummyStoreField, "watch-combined-field-only", map[string]string{envLabel: envDev}, specSSD)
 
 			Consistently(watch.Events()).ShouldNot(Receive())
 
 			By("creating the object that matches both selectors")
-			obj := createDummy(ctx, dummyStoreField, "watch-combined-matched", map[string]string{"env": "prod"}, "ssd")
+			obj := createDummy(ctx, dummyStoreField, "watch-combined-matched", map[string]string{envLabel: envProd}, specSSD)
 
 			event := store.WatchEvent[*Dummy]{Type: store.WatchEventTypeCreated, Object: obj}
 			Eventually(watch.Events()).Should(Receive(Equal(event)))
@@ -225,14 +236,14 @@ var _ = Describe("Store", func() {
 		})
 
 		It("should emit a deleted event when a tracked object transitions out of scope", func(ctx SpecContext) {
-			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{"app": "watched"})
+			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{appLabel: appWatched})
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(watch.Stop)
 
-			obj := createDummy(ctx, dummyStore, "transitions-out", map[string]string{"app": "watched"}, "")
+			obj := createDummy(ctx, dummyStore, "transitions-out", map[string]string{appLabel: appWatched}, "")
 			Eventually(watch.Events()).Should(Receive(HaveField("Type", store.WatchEventTypeCreated)))
 
-			obj.Labels["app"] = "other"
+			obj.Labels[appLabel] = appOther
 			_, err = dummyStore.Update(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -240,12 +251,12 @@ var _ = Describe("Store", func() {
 		})
 
 		It("should not forward a delete event for an object that was never tracked", func(ctx SpecContext) {
-			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{"app": "watched"})
+			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{appLabel: appWatched})
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(watch.Stop)
 
 			obj, err := dummyStore.Create(ctx, &Dummy{
-				Metadata: api.Metadata{ID: "delete-untracked", Labels: map[string]string{"app": "other"}},
+				Metadata: api.Metadata{ID: "delete-untracked", Labels: map[string]string{appLabel: appOther}},
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Consistently(watch.Events()).ShouldNot(Receive())
@@ -255,12 +266,12 @@ var _ = Describe("Store", func() {
 		})
 
 		It("should forward a delete event for a tracked object", func(ctx SpecContext) {
-			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{"app": "watched"})
+			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{appLabel: appWatched})
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(watch.Stop)
 
 			obj, err := dummyStore.Create(ctx, &Dummy{
-				Metadata: api.Metadata{ID: "delete-tracked", Labels: map[string]string{"app": "watched"}},
+				Metadata: api.Metadata{ID: "delete-tracked", Labels: map[string]string{appLabel: appWatched}},
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(watch.Events()).Should(Receive(HaveField("Type", store.WatchEventTypeCreated)))
@@ -270,14 +281,14 @@ var _ = Describe("Store", func() {
 		})
 
 		It("should receive events when an object transitions into scope", func(ctx SpecContext) {
-			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{"app": "watched"})
+			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{appLabel: appWatched})
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(watch.Stop)
 
-			obj := createDummy(ctx, dummyStore, "transitions-in", map[string]string{"app": "other"}, "")
+			obj := createDummy(ctx, dummyStore, "transitions-in", map[string]string{appLabel: appOther}, "")
 			Consistently(watch.Events()).ShouldNot(Receive())
 
-			obj.Labels["app"] = "watched"
+			obj.Labels[appLabel] = appWatched
 			updated, err := dummyStore.Update(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -287,13 +298,13 @@ var _ = Describe("Store", func() {
 		})
 
 		It("should emit a deleted event when a pre-existing object transitions out of scope", func(ctx SpecContext) {
-			obj := createDummy(ctx, dummyStore, "preexisting-transitions-out", map[string]string{"app": "watched"}, "")
+			obj := createDummy(ctx, dummyStore, "preexisting-transitions-out", map[string]string{appLabel: appWatched}, "")
 
-			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{"app": "watched"})
+			watch, err := dummyStore.Watch(ctx, store.MatchingLabels{appLabel: appWatched})
 			Expect(err).NotTo(HaveOccurred())
 			DeferCleanup(watch.Stop)
 
-			obj.Labels["app"] = "other"
+			obj.Labels[appLabel] = appOther
 			_, err = dummyStore.Update(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 

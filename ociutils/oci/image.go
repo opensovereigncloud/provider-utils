@@ -284,13 +284,15 @@ func IgnoreImagePulling(err error) error {
 	return err
 }
 
+const layerPrefix = "layer"
+
 func setupMediaTypeKeyPrefixes(ctx context.Context) context.Context {
 	mediaTypeToPrefix := map[string]string{
 		ironcoreimage.ConfigMediaType:         "config",
-		ironcoreimage.InitRAMFSLayerMediaType: "layer",
-		ironcoreimage.KernelLayerMediaType:    "layer",
-		ironcoreimage.RootFSLayerMediaType:    "layer",
-		ironcoreimage.SquashFSLayerMediaType:  "layer",
+		ironcoreimage.InitRAMFSLayerMediaType: layerPrefix,
+		ironcoreimage.KernelLayerMediaType:    layerPrefix,
+		ironcoreimage.RootFSLayerMediaType:    layerPrefix,
+		ironcoreimage.SquashFSLayerMediaType:  layerPrefix,
 	}
 	for mediaType, prefix := range mediaTypeToPrefix {
 		ctx = remotes.WithMediaTypeKeyPrefix(ctx, mediaType, prefix)
