@@ -16,6 +16,8 @@ import (
 	log "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const gpuResource = "nvidia.com/gpu"
+
 type mockReader struct {
 	devices []pci.Address
 	err     error
@@ -30,7 +32,7 @@ var _ = Describe("Resource Claimer", func() {
 		By("init plugin")
 		resourceClaimer, err := claim.NewResourceClaimer(
 			log.FromContext(ctx),
-			gpu.NewGPUClaimPlugin(log.FromContext(ctx), "nvidia.com/gpu", &mockReader{
+			gpu.NewGPUClaimPlugin(log.FromContext(ctx), gpuResource, &mockReader{
 				devices: []pci.Address{
 					{},
 					{Function: 1},
@@ -66,13 +68,13 @@ var _ = Describe("Resource Claimer", func() {
 
 		By("claiming correct resource")
 		resourceClaim, err = resourceClaimer.Claim(ctx, v1alpha1.ResourceList{
-			"nvidia.com/gpu": resource.MustParse("1"),
+			gpuResource: resource.MustParse("1"),
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resourceClaim).NotTo(BeNil())
-		Expect(resourceClaim).To(HaveKey(v1alpha1.ResourceName("nvidia.com/gpu")))
+		Expect(resourceClaim).To(HaveKey(v1alpha1.ResourceName(gpuResource)))
 
-		gpuClaim, ok := resourceClaim[v1alpha1.ResourceName("nvidia.com/gpu")].(gpu.Claim)
+		gpuClaim, ok := resourceClaim[v1alpha1.ResourceName(gpuResource)].(gpu.Claim)
 		Expect(ok).To(BeTrue())
 		Expect(gpuClaim.PCIAddresses()).To(Not(BeNil()))
 
@@ -81,13 +83,13 @@ var _ = Describe("Resource Claimer", func() {
 
 		By("claiming correct resource")
 		_, err = resourceClaimer.Claim(ctx, v1alpha1.ResourceList{
-			"nvidia.com/gpu": resource.MustParse("2"),
+			gpuResource: resource.MustParse("2"),
 		})
 		Expect(err).NotTo(HaveOccurred())
 
 		By("claiming again resource")
 		_, err = resourceClaimer.Claim(ctx, v1alpha1.ResourceList{
-			"nvidia.com/gpu": resource.MustParse("2"),
+			gpuResource: resource.MustParse("2"),
 		})
 		Expect(err).Should(MatchError(claim.ErrInsufficientResources))
 
