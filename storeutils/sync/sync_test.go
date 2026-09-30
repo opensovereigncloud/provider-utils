@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"sync"
 
-	. "github.com/ironcore-dev/ironcore/broker/common/sync"
-	. "github.com/ironcore-dev/ironcore/utils/testing"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	. "github.com/ironcore-dev/ironcore/utils/testing"
+
+	. "github.com/ironcore-dev/provider-utils/storeutils/sync"
 )
 
 var _ = Describe("Sync", func() {
