@@ -15,15 +15,6 @@ import (
 	log "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const (
-	fileClass           = "class"
-	fileVendor          = "vendor"
-	fileDevice          = "device"
-	fileSubsystemVendor = "subsystem_vendor"
-	fileSubsystemDevice = "subsystem_device"
-	fileRevision        = "revision"
-)
-
 func writeFakePCIDevice(t *testing.T, sysRoot, id string, vals map[string]string) {
 	t.Helper()
 
@@ -34,12 +25,12 @@ func writeFakePCIDevice(t *testing.T, sysRoot, id string, vals map[string]string
 	}
 
 	required := []string{
-		fileClass,
-		fileVendor,
-		fileDevice,
-		fileSubsystemVendor,
-		fileSubsystemDevice,
-		fileRevision,
+		"class",
+		"vendor",
+		"device",
+		"subsystem_vendor",
+		"subsystem_device",
+		"revision",
 	}
 
 	for _, f := range required {
@@ -73,32 +64,32 @@ func TestPCIReader_ReadFilters(t *testing.T) {
 
 	// matching device 1
 	writeFakePCIDevice(t, tmpDir, "0000:17:00.0", map[string]string{
-		fileClass:           "0x030200",
-		fileVendor:          "0x10de",
-		fileDevice:          "0x2901",
-		fileSubsystemVendor: "0x10de",
-		fileSubsystemDevice: "0x0001",
-		fileRevision:        "0x1",
+		"class":            "0x030200",
+		"vendor":           "0x10de",
+		"device":           "0x2901",
+		"subsystem_vendor": "0x10de",
+		"subsystem_device": "0x0001",
+		"revision":         "0x1",
 	})
 
 	// matching device 2
 	writeFakePCIDevice(t, tmpDir, "0000:97:00.0", map[string]string{
-		fileClass:           "0x030200",
-		fileVendor:          "0x10de",
-		fileDevice:          "0x2902",
-		fileSubsystemVendor: "0x10de",
-		fileSubsystemDevice: "0x0002",
-		fileRevision:        "0x1",
+		"class":            "0x030200",
+		"vendor":           "0x10de",
+		"device":           "0x2902",
+		"subsystem_vendor": "0x10de",
+		"subsystem_device": "0x0002",
+		"revision":         "0x1",
 	})
 
 	// non-matching device (wrong class/vendor)
 	writeFakePCIDevice(t, tmpDir, "0000:00:00.0", map[string]string{
-		fileClass:           "0x040000",
-		fileVendor:          "0x1000",
-		fileDevice:          "0xBEEF",
-		fileSubsystemVendor: "0x1000",
-		fileSubsystemDevice: "0x0003",
-		fileRevision:        "0x1",
+		"class":            "0x040000",
+		"vendor":           "0x1000",
+		"device":           "0xBEEF",
+		"subsystem_vendor": "0x1000",
+		"subsystem_device": "0x0003",
+		"revision":         "0x1",
 	})
 
 	logger := log.Log.WithName("pci-test")

@@ -32,8 +32,6 @@ const (
 	eventuallyTimeout    = 5 * time.Second
 	pollingInterval      = 250 * time.Millisecond
 	consistentlyDuration = 1 * time.Second
-
-	specField = "spec"
 )
 
 func TestServer(t *testing.T) {
@@ -68,7 +66,7 @@ var _ = BeforeSuite(func() {
 			return &Dummy{}
 		},
 		FieldIndexers: map[string]store.IndexerFunc[*Dummy]{
-			specField: func(d *Dummy) string { return d.Spec },
+			"spec": func(d *Dummy) string { return d.Spec },
 		},
 	})
 	Expect(err).NotTo(HaveOccurred())

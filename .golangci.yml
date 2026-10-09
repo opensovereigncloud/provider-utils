@@ -31,6 +31,8 @@ linters:
         - name: exported
         - name: if-return
           disabled: true
+    goconst:
+      ignore-tests: true
 
   exclusions:
     generated: lax
